@@ -1,0 +1,125 @@
+vpc:
+  name: prod-vpc
+  cidr: 10.0.0.0/16
+
+subnets:
+  - name: public-subnet-1
+    cidr: 10.0.1.0/24
+    type: public
+    az: ap-south-1a
+
+  - name: public-subnet-2
+    cidr: 10.0.3.0/24
+    type: public
+    az: ap-south-1b
+
+  - name: private-subnet-1
+    cidr: 10.0.2.0/24
+    type: private
+    az: ap-south-1a
+
+  - name: private-subnet-2
+    cidr: 10.0.4.0/24
+    type: private
+    az: ap-south-1b
+
+internet_gateway:
+  name: igw-prod
+  attached_to: prod-vpc
+
+route_tables:
+  - name: public-rt
+    routes:
+      - destination: 0.0.0.0/0
+        target: igw-prod
+    associated_subnets:
+      - public-subnet-1
+      - public-subnet-2
+
+  - name: private-rt
+    routes:
+      - destination: 10.0.0.0/16
+        target: local
+    associated_subnets:
+      - private-subnet-1
+      - private-subnet-2
+
+security_groups:
+  - name: alb-sg-public
+    description: Public access to ALB
+    inbound:
+      - port: 80
+        source: 0.0.0.0/0
+    outbound:
+      - port: 80
+        destination: web-sg-private
+
+  - name: web-sg-private
+    description: Web servers accessible only via ALB
+    inbound:
+      - port: 80
+        source: alb-sg-public
+      - port: 22
+        source: my-ip
+    outbound:
+      - port: all
+        destination: 0.0.0.0/0
+
+load_balancer:
+  name: alb-web-public
+  type: application
+  scheme: internet-facing
+  subnets:
+    - public-subnet-1
+    - public-subnet-2
+  security_group: alb-sg-public
+  listener:
+    protocol: HTTP
+    port: 80
+    default_action: forward
+    forward_to: tg-web-public-http
+
+target_group:
+  name: tg-web-public-http
+  protocol: HTTP
+  port: 80
+  health_check:
+    path: /
+    protocol: HTTP
+    interval: 30
+    timeout: 5
+    healthy_threshold: 2
+    unhealthy_threshold: 2
+  targets: managed-by-asg
+
+launch_template:
+  name: lt-web-server
+  instance_type: t3.micro
+  ami: latest-amazon-linux-2023
+  key_pair: web-key
+  security_group: web-sg-private
+  user_data: launch-template.tpl
+  tags:
+    Component: compute-template
+    ManagedBy: manual
+
+auto_scaling_group:
+  name: asg-web-app
+  subnets:
+    - public-subnet-1
+    - public-subnet-2
+  min_size: 2
+  desired_capacity: 2
+  max_size: 6
+  health_check_type: ELB
+  health_check_grace_period: 300
+  warmup: 300
+  target_group: tg-web-public-http
+  scaling_policy:
+    type: target_tracking
+    metric: CPUUtilization
+    target_value: 50
+    scale_in_enabled: true
+  tags:
+    Component: auto-scaling
+    ManagedBy: auto-scaling
