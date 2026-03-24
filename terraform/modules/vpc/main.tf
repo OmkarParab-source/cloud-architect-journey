@@ -47,6 +47,28 @@ resource "aws_internet_gateway" "this" {
   })
 }
 
+resource "aws_eip" "nat" {
+  domain = "vpc"
+
+  tags = merge(var.tags, {
+    Name = "${var.vpc_name}-nat-eip"
+  })
+}
+
+resource "aws_nat_gateway" "this" {
+  allocation_id = aws_eip.nat.id
+
+  # Currently hardcoded Single NAT for Learning purpose
+  # TODO: Per-AZ NAT later during production hardening
+  subnet_id = aws_subnet.public["public-subnet-1"].id
+
+  tags = merge(var.tags, {
+    Name = "${var.vpc_name}-nat"
+  })
+
+  depends_on = [aws_internet_gateway.this]
+}
+
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.this.id
 
@@ -74,6 +96,13 @@ resource "aws_route_table" "private" {
   tags = merge(var.tags, {
     Name = "${var.vpc_name}-private-rt"
   })
+}
+
+resource "aws_route" "private_nat" {
+  route_table_id         = aws_route_table.private.id
+  destination_cidr_block = "0.0.0.0/0"
+
+  nat_gateway_id = aws_nat_gateway.this.id
 }
 
 resource "aws_route_table_association" "private" {
