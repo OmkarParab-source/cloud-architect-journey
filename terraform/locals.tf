@@ -1,7 +1,7 @@
 locals {
   common_tags = {
     Project     = "cloud-architect-journey"
-    Env         = "dev"
+    Env         = var.env
     ManagedBy   = "terraform"
     Owner       = "omkar"
   }
