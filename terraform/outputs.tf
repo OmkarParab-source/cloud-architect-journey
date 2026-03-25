@@ -17,3 +17,11 @@ output "public_subnets" {
 output "private_subnets" {
   value = module.vpc.private_subnets
 }
+
+output "alb_sg_id" {
+  value = module.security.alb_sg_id
+}
+
+output "ec2_sg_id" {
+  value = module.security.ec2_sg_id
+}

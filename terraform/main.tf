@@ -15,3 +15,9 @@ module "vpc" {
     { name = "private-subnet-2", cidr = "10.0.4.0/24", az_key = "b" }
   ]
 }
+
+module "security" {
+  source = "./modules/security"
+  vpc_id = module.vpc.vpc_id
+  tags   = local.common_tags
+}
