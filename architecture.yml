@@ -27,6 +27,19 @@ internet_gateway:
   name: igw-prod
   attached_to: prod-vpc
 
+elastic_ips:
+  - name: nat-eip-az-a
+  - name: nat-eip-az-b
+
+nat_gateways:
+  - name: nat-az-a
+    subnet: public-subnet-1
+    elastic_ip: nat-eip-az-a
+
+  - name: nat-az-b
+    subnet: public-subnet-2
+    elastic_ip: nat-eip-az-b
+
 route_tables:
   - name: public-rt
     routes:
@@ -36,12 +49,18 @@ route_tables:
       - public-subnet-1
       - public-subnet-2
 
-  - name: private-rt
+  - name: private-rt-az-a
     routes:
-      - destination: 10.0.0.0/16
-        target: local
+      - destination: 0.0.0.0/0
+        target: nat-az-a
     associated_subnets:
       - private-subnet-1
+
+  - name: private-rt-az-b
+    routes:
+      - destination: 0.0.0.0/0
+        target: nat-az-b
+    associated_subnets:
       - private-subnet-2
 
 security_groups:
@@ -49,20 +68,22 @@ security_groups:
     description: Public access to ALB
     inbound:
       - port: 80
+        protocol: tcp
         source: 0.0.0.0/0
     outbound:
-      - port: 80
-        destination: web-sg-private
+      - port: all
+        protocol: all
+        destination: 0.0.0.0/0
 
   - name: web-sg-private
-    description: Web servers accessible only via ALB
+    description: Web tier restricted to ALB
     inbound:
       - port: 80
+        protocol: tcp
         source: alb-sg-public
-      - port: 22
-        source: my-ip
     outbound:
       - port: all
+        protocol: all
         destination: 0.0.0.0/0
 
 load_balancer:
@@ -73,53 +94,65 @@ load_balancer:
     - public-subnet-1
     - public-subnet-2
   security_group: alb-sg-public
-  listener:
-    protocol: HTTP
-    port: 80
-    default_action: forward
-    forward_to: tg-web-public-http
+
+listener:
+  port: 80
+  protocol: HTTP
+  default_action:
+    type: forward
+    target_group: tg-web-http
 
 target_group:
-  name: tg-web-public-http
+  name: tg-web-http
   protocol: HTTP
   port: 80
   health_check:
     path: /
     protocol: HTTP
     interval: 30
-    timeout: 5
-    healthy_threshold: 2
-    unhealthy_threshold: 2
-  targets: managed-by-asg
+    healthy_threshold: 3
+    unhealthy_threshold: 3
 
 launch_template:
   name: lt-web-server
   instance_type: t3.micro
   ami: latest-amazon-linux-2023
-  key_pair: web-key
   security_group: web-sg-private
-  user_data: launch-template.tpl
-  tags:
-    Component: compute-template
-    ManagedBy: manual
+  iam_role: ec2_role
 
 auto_scaling_group:
   name: asg-web-app
   subnets:
-    - public-subnet-1
-    - public-subnet-2
+    - private-subnet-1
+    - private-subnet-2
   min_size: 2
   desired_capacity: 2
   max_size: 6
-  health_check_type: ELB
-  health_check_grace_period: 300
-  warmup: 300
-  target_group: tg-web-public-http
-  scaling_policy:
-    type: target_tracking
-    metric: CPUUtilization
-    target_value: 50
-    scale_in_enabled: true
-  tags:
-    Component: auto-scaling
-    ManagedBy: auto-scaling
+  target_group: tg-web-http
+
+access:
+  method: ssm
+
+observability:
+  cloudwatch:
+    logs: enabled
+    metrics: enabled
+    alarms:
+      - name: cpu_high
+        metric: CPUUtilization
+        threshold: 80
+      - name: unhealthy_hosts
+        metric: UnHealthyHostCount
+        threshold: 1
+
+state_management:
+  backend:
+    type: s3
+    locking: dynamodb
+
+iam:
+  roles:
+    - name: ec2_role
+      purpose: instance_access_and_ssm
+    - name: terraform_execution_role
+      purpose: infrastructure_provisioning
