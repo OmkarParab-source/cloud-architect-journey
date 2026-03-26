@@ -1,4 +1,5 @@
 .terraform/
+private/
 *.tfstate
 *.tfstate.*
 *.tfplan
