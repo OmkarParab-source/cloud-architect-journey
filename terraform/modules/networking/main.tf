@@ -37,23 +37,24 @@ resource "aws_internet_gateway" "this" {
 }
 
 resource "aws_eip" "nat" {
+  for_each = local.az_map
+
   domain = "vpc"
 
   tags = merge(var.common_tags, {
-    Name      = "${local.name_prefix}-eip"
+    Name      = "${local.name_prefix}-eip-${each.key}"
     Component = "elastic-ip"
   })
 }
 
 resource "aws_nat_gateway" "this" {
-  allocation_id = aws_eip.nat.id
+  for_each = local.az_map
 
-  # Currently hardcoded Single NAT for Learning purpose
-  # TODO: Per-AZ NAT later during production hardening
-  subnet_id = aws_subnet.public["public-subnet-1"].id
+  allocation_id = aws_eip.nat[each.key].id
+  subnet_id     = aws_subnet.public[local.public_subnet_by_az[each.key]].id
 
   tags = merge(var.common_tags, {
-    Name      = "${local.name_prefix}-nat"
+    Name      = "${local.name_prefix}-nat-${each.key}"
     Component = "nat-gateway"
   })
 
@@ -83,24 +84,27 @@ resource "aws_route_table_association" "public" {
 }
 
 resource "aws_route_table" "private" {
+  for_each = local.az_map
+
   vpc_id = var.vpc_id
 
   tags = merge(var.common_tags, {
-    Name      = "${local.name_prefix}-private-rt"
+    Name      = "${local.name_prefix}-private-rt-${each.key}"
     Component = "route-table"
   })
 }
 
 resource "aws_route" "private_nat" {
-  route_table_id         = aws_route_table.private.id
-  destination_cidr_block = "0.0.0.0/0"
+  for_each = local.az_map
 
-  nat_gateway_id = aws_nat_gateway.this.id
+  route_table_id         = aws_route_table.private[each.key].id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.this[each.key].id
 }
 
 resource "aws_route_table_association" "private" {
-  for_each = aws_subnet.private
+  for_each = var.private_subnets
 
-  subnet_id      = each.value.id
-  route_table_id = aws_route_table.private.id
+  subnet_id      = aws_subnet.private[each.key].id
+  route_table_id = aws_route_table.private[each.value.az_key].id
 }
