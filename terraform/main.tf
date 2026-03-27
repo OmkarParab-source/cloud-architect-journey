@@ -29,6 +29,10 @@ module "networking" {
 
 module "security" {
   source = "./modules/security"
+
+  project     = local.project
+  environment = local.environment
+  common_tags = local.common_tags
+
   vpc_id = module.vpc.vpc_id
-  tags   = local.common_tags
 }

@@ -1,14 +1,16 @@
 resource "aws_security_group" "alb" {
-  name        = "alb-sg"
-  description = "Allow HTTP from Internet"
+  name        = "${local.name_prefix}-alb-sg"
+  description = "ALB security group"
   vpc_id      = var.vpc_id
 
-  tags = merge(var.tags, {
-    Name = "alb-sg"
+  tags = merge(var.common_tags, {
+    Name      = "${local.name_prefix}-alb-sg"
+    Component = "alb-sg"
+    Tier      = "public"
   })
 }
 
-resource "aws_security_group_rule" "alb_inbound_http" {
+resource "aws_security_group_rule" "alb_http" {
   type              = "ingress"
   security_group_id = aws_security_group.alb.id
 
@@ -29,12 +31,14 @@ resource "aws_security_group_rule" "alb_outbound" {
 }
 
 resource "aws_security_group" "ec2" {
-  name        = "ec2-sg"
+  name        = "${local.name_prefix}-ec2-sg"
   description = "Allow traffic only from ALB"
   vpc_id      = var.vpc_id
 
-  tags = merge(var.tags, {
-    Name = "ec2-sg"
+  tags = merge(var.common_tags, {
+    Name      = "${local.name_prefix}-ec2-sg"
+    Component = "ec2-sg"
+    Tier      = "private"
   })
 }
 
