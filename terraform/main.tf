@@ -1,8 +1,11 @@
 module "vpc" {
-  source   = "./modules/vpc"
-  vpc_name = "prod-vpc"
+  source = "./modules/vpc"
+
+  project     = local.project
+  environment = local.environment
+  common_tags = local.common_tags
+
   vpc_cidr = "10.0.0.0/16"
-  tags     = local.common_tags
 }
 
 module "networking" {
