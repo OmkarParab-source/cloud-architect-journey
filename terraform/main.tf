@@ -11,20 +11,20 @@ module "vpc" {
 module "networking" {
   source = "./modules/networking"
 
-  vpc_id   = module.vpc.vpc_id
-  vpc_name = "prod-vpc"
-  env      = var.env
-  tags     = local.common_tags
+  project     = local.project
+  environment = local.environment
+  common_tags = local.common_tags
 
-  public_subnets = [
-    { name = "public-subnet-1", cidr = "10.0.1.0/24", az_key = "a" },
-    { name = "public-subnet-2", cidr = "10.0.3.0/24", az_key = "b" }
-  ]
+  vpc_id = module.vpc.vpc_id
 
-  private_subnets = [
-    { name = "private-subnet-1", cidr = "10.0.2.0/24", az_key = "a" },
-    { name = "private-subnet-2", cidr = "10.0.4.0/24", az_key = "b" }
-  ]
+  public_subnets = {
+    public-subnet-1 = { cidr = "10.0.1.0/24", az_key = "az-a" },
+    public-subnet-2 = { cidr = "10.0.3.0/24", az_key = "az-b" }
+  }
+  private_subnets = {
+    private-subnet-1 = { cidr = "10.0.2.0/24", az_key = "az-a" },
+    private-subnet-2 = { cidr = "10.0.4.0/24", az_key = "az-b" }
+  }
 }
 
 module "security" {

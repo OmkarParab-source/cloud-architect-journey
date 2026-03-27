@@ -1,49 +1,47 @@
 resource "aws_subnet" "public" {
-  for_each = {
-    for subnet in var.public_subnets :
-    subnet.name => subnet
-  }
+  for_each = var.public_subnets
 
   vpc_id                  = var.vpc_id
   cidr_block              = each.value.cidr
   availability_zone       = local.az_map[each.value.az_key]
   map_public_ip_on_launch = true
 
-  tags = merge(var.tags, {
-    Name = each.value.name
-    Tier = "public"
+  tags = merge(var.common_tags, {
+    Name      = "${local.name_prefix}-${each.key}"
+    Component = "public-subnet"
+    Tier      = "public"
   })
 }
 
 resource "aws_subnet" "private" {
-  for_each = {
-    for subnet in var.private_subnets :
-    subnet.name => subnet
-  }
+  for_each = var.private_subnets
 
   vpc_id            = var.vpc_id
   cidr_block        = each.value.cidr
   availability_zone = local.az_map[each.value.az_key]
 
-  tags = merge(var.tags, {
-    Name = each.value.name
-    Tier = "private"
+  tags = merge(var.common_tags, {
+    Name      = "${local.name_prefix}-${each.key}"
+    Component = "private-subnet"
+    Tier      = "private"
   })
 }
 
 resource "aws_internet_gateway" "this" {
   vpc_id = var.vpc_id
 
-  tags = merge(var.tags, {
-    Name = "${var.vpc_name}-igw"
+  tags = merge(var.common_tags, {
+    Name      = "${local.name_prefix}-igw"
+    Component = "internet-gateway"
   })
 }
 
 resource "aws_eip" "nat" {
   domain = "vpc"
 
-  tags = merge(var.tags, {
-    Name = "${var.vpc_name}-nat-eip"
+  tags = merge(var.common_tags, {
+    Name      = "${local.name_prefix}-eip"
+    Component = "elastic-ip"
   })
 }
 
@@ -54,8 +52,9 @@ resource "aws_nat_gateway" "this" {
   # TODO: Per-AZ NAT later during production hardening
   subnet_id = aws_subnet.public["public-subnet-1"].id
 
-  tags = merge(var.tags, {
-    Name = "${var.vpc_name}-nat"
+  tags = merge(var.common_tags, {
+    Name      = "${local.name_prefix}-nat"
+    Component = "nat-gateway"
   })
 
   depends_on = [aws_internet_gateway.this]
@@ -64,8 +63,9 @@ resource "aws_nat_gateway" "this" {
 resource "aws_route_table" "public" {
   vpc_id = var.vpc_id
 
-  tags = merge(var.tags, {
-    Name = "${var.vpc_name}-public-rt"
+  tags = merge(var.common_tags, {
+    Name      = "${local.name_prefix}-public-rt"
+    Component = "route-table"
   })
 }
 
@@ -85,8 +85,9 @@ resource "aws_route_table_association" "public" {
 resource "aws_route_table" "private" {
   vpc_id = var.vpc_id
 
-  tags = merge(var.tags, {
-    Name = "${var.vpc_name}-private-rt"
+  tags = merge(var.common_tags, {
+    Name      = "${local.name_prefix}-private-rt"
+    Component = "route-table"
   })
 }
 
