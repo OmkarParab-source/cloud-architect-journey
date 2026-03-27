@@ -10,55 +10,48 @@ resource "aws_security_group" "alb" {
   })
 }
 
-resource "aws_security_group_rule" "alb_http" {
-  type              = "ingress"
+resource "aws_vpc_security_group_ingress_rule" "alb_http" {
   security_group_id = aws_security_group.alb.id
 
+  ip_protocol = "tcp"
   from_port   = 80
   to_port     = 80
-  protocol    = "tcp"
-  cidr_blocks = ["0.0.0.0/0"]
+
+  cidr_ipv4 = "0.0.0.0/0"
 }
 
-resource "aws_security_group_rule" "alb_outbound" {
-  type              = "egress"
+resource "aws_vpc_security_group_egress_rule" "alb_outbound" {
   security_group_id = aws_security_group.alb.id
 
-  from_port   = 0
-  to_port     = 0
-  protocol    = "-1"
-  cidr_blocks = ["0.0.0.0/0"]
+  ip_protocol = "-1"
+  cidr_ipv4   = "0.0.0.0/0"
 }
 
-resource "aws_security_group" "ec2" {
-  name        = "${local.name_prefix}-ec2-sg"
-  description = "Allow traffic only from ALB"
+resource "aws_security_group" "web" {
+  name        = "${local.name_prefix}-web-sg"
+  description = "Web tier security group"
   vpc_id      = var.vpc_id
 
   tags = merge(var.common_tags, {
-    Name      = "${local.name_prefix}-ec2-sg"
-    Component = "ec2-sg"
+    Name      = "${local.name_prefix}-web-sg"
+    Component = "web-sg"
     Tier      = "private"
   })
 }
 
-resource "aws_security_group_rule" "ec2_inbound_from_alb" {
-  type              = "ingress"
-  security_group_id = aws_security_group.ec2.id
+resource "aws_vpc_security_group_ingress_rule" "web_from_alb" {
+  security_group_id = aws_security_group.web.id
 
-  from_port = 80
-  to_port   = 80
-  protocol  = "tcp"
+  ip_protocol = "tcp"
+  from_port   = 80
+  to_port     = 80
 
-  source_security_group_id = aws_security_group.alb.id
+  referenced_security_group_id = aws_security_group.alb.id
 }
 
-resource "aws_security_group_rule" "ec2_outbound" {
-  type              = "egress"
-  security_group_id = aws_security_group.ec2.id
+resource "aws_vpc_security_group_egress_rule" "web_outbound" {
+  security_group_id = aws_security_group.web.id
 
-  from_port   = 0
-  to_port     = 0
-  protocol    = "-1"
-  cidr_blocks = ["0.0.0.0/0"]
+  ip_protocol = "-1"
+  cidr_ipv4   = "0.0.0.0/0"
 }
