@@ -48,3 +48,15 @@ module "alb" {
   public_subnet_ids = module.networking.public_subnet_ids
   alb_sg_id         = module.security.alb_sg_id
 }
+
+module "compute" {
+  source = "./modules/compute"
+
+  project     = local.project
+  environment = local.environment
+  common_tags = local.common_tags
+
+  private_subnet_ids = module.networking.private_subnet_ids
+  web_sg_id          = module.security.web_sg_id
+  target_group_arn   = module.alb.target_group_arn
+}
