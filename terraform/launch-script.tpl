@@ -1,10 +1,11 @@
 #!/bin/bash
 set -e
 
-sudo dnf update -y
-sudo dnf install nginx -y
+dnf update -y
+dnf install -y nginx amazon-ssm-agent || true
 
-sudo systemctl start nginx
-sudo systemctl enable nginx
+systemctl enable --now nginx
 
 echo "Hello from $(hostname)" > /usr/share/nginx/html/index.html
+
+systemctl enable --now amazon-ssm-agent

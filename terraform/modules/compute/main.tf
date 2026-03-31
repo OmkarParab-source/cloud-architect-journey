@@ -7,6 +7,14 @@ resource "aws_launch_template" "web" {
 
   user_data = base64encode(templatefile("${path.root}/launch-script.tpl", {}))
 
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ec2_ssm_profile.name
+  }
+
+  monitoring {
+    enabled = true
+  }
+
   tags = merge(var.common_tags, {
     Name      = "${local.name_prefix}-web-lt"
     Component = "web-launch-template"
@@ -43,6 +51,14 @@ resource "aws_autoscaling_group" "web_asg" {
     version = "$Latest"
   }
 
+  instance_refresh {
+    strategy = "Rolling"
+
+    preferences {
+      min_healthy_percentage = 50
+    }
+  }
+
   dynamic "tag" {
     for_each = merge(var.common_tags, {
       Name      = "${local.name_prefix}-web-asg"
@@ -66,4 +82,15 @@ resource "aws_autoscaling_group" "web_asg" {
       propagate_at_launch = true
     }
   }
+
+  enabled_metrics = [
+    "GroupMinSize",
+    "GroupMaxSize",
+    "GroupDesiredCapacity",
+    "GroupInServiceInstances",
+    "GroupPendingInstances",
+    "GroupStandbyInstances",
+    "GroupTerminatingInstances",
+    "GroupTotalInstances"
+  ]
 }
