@@ -60,3 +60,14 @@ module "compute" {
   web_sg_id          = module.security.web_sg_id
   target_group_arn   = module.alb.target_group_arn
 }
+
+module "observability" {
+  source = "./modules/observability"
+
+  project     = local.project
+  environment = local.environment
+  common_tags = local.common_tags
+
+  target_group_arn_suffix = module.alb.target_group_arn_suffix
+  alb_arn_suffix          = module.alb.alb_arn_suffix
+}
