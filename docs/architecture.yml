@@ -1,158 +1,193 @@
+environment: dev
+project: pr1
+system: cloud-architect-journey
+
 vpc:
-  name: prod-vpc
+  name: pr1-dev-vpc
   cidr: 10.0.0.0/16
+  dns_support: true
+  dns_hostnames: false
 
 subnets:
-  - name: public-subnet-1
-    cidr: 10.0.1.0/24
-    type: public
-    az: ap-south-1a
+  public:
+    - name: public-subnet-1
+      cidr: 10.0.1.0/24
+      az: ap-south-1a
 
-  - name: public-subnet-2
-    cidr: 10.0.3.0/24
-    type: public
-    az: ap-south-1b
+    - name: public-subnet-2
+      cidr: 10.0.3.0/24
+      az: ap-south-1b
 
-  - name: private-subnet-1
-    cidr: 10.0.2.0/24
-    type: private
-    az: ap-south-1a
+  private:
+    - name: private-subnet-1
+      cidr: 10.0.2.0/24
+      az: ap-south-1a
 
-  - name: private-subnet-2
-    cidr: 10.0.4.0/24
-    type: private
-    az: ap-south-1b
+    - name: private-subnet-2
+      cidr: 10.0.4.0/24
+      az: ap-south-1b
 
-internet_gateway:
-  name: igw-prod
-  attached_to: prod-vpc
+networking:
+  internet_gateway:
+    enabled: true
 
-elastic_ips:
-  - name: nat-eip-az-a
-  - name: nat-eip-az-b
+  nat_gateways:
+    strategy: one-per-az
+    eips:
+      - pr1-dev-eip-az-a
+      - pr1-dev-eip-az-b
 
-nat_gateways:
-  - name: nat-az-a
-    subnet: public-subnet-1
-    elastic_ip: nat-eip-az-a
+  routing:
+    public:
+      route: 0.0.0.0/0 → igw
+    private:
+      az-a: 0.0.0.0/0 → nat-az-a
+      az-b: 0.0.0.0/0 → nat-az-b
 
-  - name: nat-az-b
-    subnet: public-subnet-2
-    elastic_ip: nat-eip-az-b
+security:
+  security_groups:
+    alb:
+      inbound:
+        - 80/tcp from 0.0.0.0/0
+        - 443/tcp from 0.0.0.0/0
+      outbound:
+        - all
 
-route_tables:
-  - name: public-rt
-    routes:
-      - destination: 0.0.0.0/0
-        target: igw-prod
-    associated_subnets:
-      - public-subnet-1
-      - public-subnet-2
+    web:
+      inbound:
+        - 80/tcp from alb
+      outbound:
+        - all
 
-  - name: private-rt-az-a
-    routes:
-      - destination: 0.0.0.0/0
-        target: nat-az-a
-    associated_subnets:
-      - private-subnet-1
-
-  - name: private-rt-az-b
-    routes:
-      - destination: 0.0.0.0/0
-        target: nat-az-b
-    associated_subnets:
-      - private-subnet-2
-
-security_groups:
-  - name: alb-sg-public
-    description: Public access to ALB
-    inbound:
-      - port: 80
-        protocol: tcp
-        source: 0.0.0.0/0
-    outbound:
-      - port: all
-        protocol: all
-        destination: 0.0.0.0/0
-
-  - name: web-sg-private
-    description: Web tier restricted to ALB
-    inbound:
-      - port: 80
-        protocol: tcp
-        source: alb-sg-public
-    outbound:
-      - port: all
-        protocol: all
-        destination: 0.0.0.0/0
+    db:
+      inbound:
+        - 3306/tcp from web
+      outbound:
+        - restricted
 
 load_balancer:
-  name: alb-web-public
+  name: pr1-dev-alb
   type: application
   scheme: internet-facing
-  subnets:
-    - public-subnet-1
-    - public-subnet-2
-  security_group: alb-sg-public
+  subnets: public
+  security_group: alb
 
-listener:
-  port: 80
-  protocol: HTTP
-  default_action:
-    type: forward
-    target_group: tg-web-http
-
-target_group:
-  name: tg-web-http
-  protocol: HTTP
-  port: 80
-  health_check:
-    path: /
+  listener:
+    port: 80
     protocol: HTTP
-    interval: 30
-    healthy_threshold: 3
-    unhealthy_threshold: 3
+    action: forward → web-target-group
 
-launch_template:
-  name: lt-web-server
-  instance_type: t3.micro
-  ami: latest-amazon-linux-2023
-  security_group: web-sg-private
-  iam_role: ec2_role
+  target_group:
+    name: pr1-dev-web-tg
+    port: 80
+    protocol: HTTP
 
-auto_scaling_group:
-  name: asg-web-app
-  subnets:
-    - private-subnet-1
-    - private-subnet-2
-  min_size: 2
-  desired_capacity: 2
-  max_size: 6
-  target_group: tg-web-http
+    health_check:
+      path: /
+      interval: 10 # tuned
+      timeout: 5
+      healthy_threshold: 2
+      unhealthy_threshold: 2
+      matcher: 200-399
+
+compute:
+  launch_template:
+    instance_type: t3.micro
+    ami: amazon-linux-2023
+    iam_role: ec2-ssm-role
+    user_data:
+      - nginx install
+      - ssm agent enabled
+
+  auto_scaling_group:
+    name: pr1-dev-web-asg
+    subnets: private
+    min: 2
+    desired: 2
+    max: 3
+
+    health_check:
+      type: ELB
+      grace_period: 60
+
+    scaling:
+      policy: target-tracking
+      metric: ASGAverageCPUUtilization
+      target: 50
+
+data_layer:
+  rds:
+    engine: mysql
+    multi_az: true
+    subnets: private
+    security_group: db
+    access:
+      only_from: web-tier
+    backup:
+      retention_days: 7
 
 access:
   method: ssm
+  ssh: disabled
 
 observability:
   cloudwatch:
-    logs: enabled
-    metrics: enabled
+    metrics:
+      enabled: true
+
+    logs:
+      application:
+        source: ec2
+        retention: 7
+
+      alb_access_logs:
+        enabled: true
+        destination: s3
+
     alarms:
       - name: cpu_high
+        namespace: AWS/EC2
         metric: CPUUtilization
-        threshold: 80
+        threshold: 70
+        evaluation_periods: 2
+
       - name: unhealthy_hosts
+        namespace: AWS/ApplicationELB
         metric: UnHealthyHostCount
         threshold: 1
+        evaluation_periods: 1
+
+    notifications:
+      sns:
+        enabled: true
+        purpose: alerting
 
 state_management:
   backend:
     type: s3
-    locking: dynamodb
+    encryption: enabled
+    versioning: enabled
+
+  locking:
+    type: dynamodb
 
 iam:
   roles:
-    - name: ec2_role
-      purpose: instance_access_and_ssm
-    - name: terraform_execution_role
-      purpose: infrastructure_provisioning
+    - name: ec2-ssm-role
+      purpose: ssm + instance management
+
+    - name: terraform-execution-role
+      purpose: infra provisioning
+
+  principle:
+    least_privilege: true
+
+tagging:
+  required:
+    - Project
+    - Environment
+    - Owner
+    - System
+    - Component
+
+  enforced: true
