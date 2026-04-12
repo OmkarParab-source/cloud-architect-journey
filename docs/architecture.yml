@@ -1,29 +1,33 @@
 environment: dev
-project: pr1
-system: cloud-architect-journey
+service: cloud-arch
+
+environments:
+  - dev
+  - staging
+  - prod
 
 vpc:
-  name: pr1-dev-vpc
+  name: cloud-arch-dev-vpc
   cidr: 10.0.0.0/16
   dns_support: true
-  dns_hostnames: false
+  dns_hostnames: true
 
 subnets:
   public:
-    - name: public-subnet-1
+    - name: cloud-arch-dev-public-az-a
       cidr: 10.0.1.0/24
       az: ap-south-1a
 
-    - name: public-subnet-2
+    - name: cloud-arch-dev-public-az-b
       cidr: 10.0.3.0/24
       az: ap-south-1b
 
   private:
-    - name: private-subnet-1
+    - name: cloud-arch-dev-private-az-a
       cidr: 10.0.2.0/24
       az: ap-south-1a
 
-    - name: private-subnet-2
+    - name: cloud-arch-dev-private-az-b
       cidr: 10.0.4.0/24
       az: ap-south-1b
 
@@ -33,16 +37,18 @@ networking:
 
   nat_gateways:
     strategy: one-per-az
-    eips:
-      - pr1-dev-eip-az-a
-      - pr1-dev-eip-az-b
+    high_availability: true
 
   routing:
     public:
-      route: 0.0.0.0/0 → igw
+      default_route: igw
+
     private:
-      az-a: 0.0.0.0/0 → nat-az-a
-      az-b: 0.0.0.0/0 → nat-az-b
+      - az: ap-south-1a
+        default_route: nat-az-a
+
+      - az: ap-south-1b
+        default_route: nat-az-b
 
 security:
   security_groups:
@@ -66,7 +72,7 @@ security:
         - restricted
 
 load_balancer:
-  name: pr1-dev-alb
+  name: cloud-arch-dev-alb
   type: application
   scheme: internet-facing
   subnets: public
@@ -75,36 +81,32 @@ load_balancer:
   listener:
     port: 80
     protocol: HTTP
-    action: forward → web-target-group
+    action: forward
 
   target_group:
-    name: pr1-dev-web-tg
+    name: cloud-arch-dev-web-tg
     port: 80
     protocol: HTTP
 
     health_check:
       path: /
-      interval: 10 # tuned
+      interval: 10
       timeout: 5
       healthy_threshold: 2
       unhealthy_threshold: 2
-      matcher: 200-399
 
 compute:
   launch_template:
     instance_type: t3.micro
     ami: amazon-linux-2023
-    iam_role: ec2-ssm-role
-    user_data:
-      - nginx install
-      - ssm agent enabled
+    iam_role: ec2-instance-role
 
   auto_scaling_group:
-    name: pr1-dev-web-asg
+    name: cloud-arch-dev-web-asg
     subnets: private
     min: 2
     desired: 2
-    max: 3
+    max: 4
 
     health_check:
       type: ELB
@@ -115,79 +117,116 @@ compute:
       metric: ASGAverageCPUUtilization
       target: 50
 
-data_layer:
-  rds:
+data:
+  database:
+    type: rds
     engine: mysql
     multi_az: true
-    subnets: private
-    security_group: db
-    access:
-      only_from: web-tier
-    backup:
-      retention_days: 7
+    accessibility: private
+    backups: enabled
+    retention_days: 7
 
 access:
   method: ssm
   ssh: disabled
 
 observability:
-  cloudwatch:
-    metrics:
+  metrics:
+    enabled: true
+    sources:
+      - ec2
+      - alb
+      - asg
+
+  logs:
+    application:
+      source: ec2
+      retention_days: 7
+
+    alb_access_logs:
       enabled: true
 
-    logs:
-      application:
-        source: ec2
-        retention: 7
+  alarms:
+    - name: cpu_high
+      metric: CPUUtilization
+      threshold: 70
 
-      alb_access_logs:
-        enabled: true
-        destination: s3
+    - name: unhealthy_hosts
+      metric: UnHealthyHostCount
+      threshold: 1
 
-    alarms:
-      - name: cpu_high
-        namespace: AWS/EC2
-        metric: CPUUtilization
-        threshold: 70
-        evaluation_periods: 2
+    - name: high_latency
+      metric: TargetResponseTime
+      threshold: 1
 
-      - name: unhealthy_hosts
-        namespace: AWS/ApplicationELB
-        metric: UnHealthyHostCount
-        threshold: 1
-        evaluation_periods: 1
+  debugging:
+    method: metrics_to_logs_correlation
 
-    notifications:
-      sns:
-        enabled: true
-        purpose: alerting
-
-state_management:
+state:
   backend:
     type: s3
-    encryption: enabled
-    versioning: enabled
+    bucket: omkar-terraform-backend-shared-state
+    key: cloud-arch/dev/terraform.tfstate
+    region: ap-south-1
+    encryption: true
 
   locking:
     type: dynamodb
+    table: omkar-terraform-backend-shared-lock
 
 iam:
   roles:
-    - name: ec2-ssm-role
-      purpose: ssm + instance management
+    - name: ec2-instance-role
+      purpose: application runtime access via SSM
 
     - name: terraform-execution-role
-      purpose: infra provisioning
+      purpose: infrastructure provisioning
 
-  principle:
+  principles:
     least_privilege: true
+    no_static_credentials: true
+
+  boundaries:
+    terraform_scope: infrastructure_only
+    ec2_scope: application_runtime_only
+
+reliability:
+  multi_az: true
+
+  self_healing:
+    asg_replacement: enabled
+
+  failure_domains:
+    - instance
+    - availability_zone
+    - dependency
+
+  recovery:
+    instance_failure: auto_replace
+    az_failure: traffic_shift
+
+deployment:
+  strategy: rolling
+  zero_downtime: true
+  validation: pre-release
+
+slo:
+  availability: 99%
+  latency_p95_ms: 500
+
+cost:
+  considerations:
+    - nat_gateway_per_az_cost
+    - autoscaling_compute_cost
+    - alb_fixed_cost
 
 tagging:
-  required:
-    - Project
-    - Environment
-    - Owner
-    - System
-    - Component
+  global:
+    Service: cloud-arch
+    Environment: dev
+    Owner: omkar
+    ManagedBy: terraform
 
-  enforced: true
+  resource_specific:
+    Name: required
+    Layer: required
