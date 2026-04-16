@@ -1,12 +1,14 @@
 locals {
-  project     = "pr1"
-  environment = "dev"
+  name_prefix = "${var.service}-${var.environment}"
 
-  common_tags = {
-    Project     = local.project
-    Environment = local.environment
-    System      = "cloud-architect-journey"
+  global_tags = {
+    Service     = var.service
+    Environment = var.environment
+    Owner       = var.owner
     ManagedBy   = "terraform"
-    Owner       = "omkar"
   }
+
+  # derived behavior
+  scaling_enabled = var.scale_out_cpu_threshold != null
+  multi_az        = length(var.private_subnets) > 1
 }

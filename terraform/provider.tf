@@ -1,15 +1,8 @@
-terraform {
-  required_version = ">= 1.3"
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
-    }
-  }
-}
-
 provider "aws" {
-  region  = "ap-south-1"
-  profile = "terraform"
+  region  = var.region
+  profile = var.profile
+
+  default_tags {
+    tags = local.global_tags
+  }
 }
