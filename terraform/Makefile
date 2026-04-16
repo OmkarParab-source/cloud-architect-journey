@@ -1,6 +1,11 @@
 PLAN_DIR = plans
-PLAN_FILE = $(PLAN_DIR)/out.tfplan
-DESTROY_PLAN = $(PLAN_DIR)/destroy.tfplan
+
+ENV ?= dev
+
+PLAN_FILE = $(PLAN_DIR)/$(ENV).tfplan
+DESTROY_PLAN = $(PLAN_DIR)/$(ENV)-destroy.tfplan
+
+TFVARS = envs/$(ENV).tfvars
 
 
 $(PLAN_DIR):
@@ -24,7 +29,7 @@ validate:
 
 .PHONY: plan
 plan: $(PLAN_DIR)
-	terraform plan -out=$(PLAN_FILE)
+	terraform plan -var-file=$(TFVARS) -out=$(PLAN_FILE)
 
 
 .PHONY: check
@@ -38,6 +43,7 @@ apply:
 
 .PHONY: deploy
 deploy: check
+	@echo Environment: $(ENV)
 	@echo About to apply Terraform plan: $(PLAN_FILE)
 	@set /p confirm="Proceed? (yes/no): " && \
 	if /I "%confirm%"=="yes" ( \
@@ -49,7 +55,7 @@ deploy: check
 
 .PHONY: destroy-plan
 destroy-plan: $(PLAN_DIR)
-	terraform plan -destroy -out=$(DESTROY_PLAN)
+	terraform plan -destroy -var-file=$(TFVARS) -out=$(DESTROY_PLAN)
 
 
 .PHONY: destroy
