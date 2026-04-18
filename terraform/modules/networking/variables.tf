@@ -1,13 +1,5 @@
-variable "project" {
+variable "name_prefix" {
   type = string
-}
-
-variable "environment" {
-  type = string
-}
-
-variable "common_tags" {
-  type = map(string)
 }
 
 variable "vpc_id" {
@@ -15,15 +7,13 @@ variable "vpc_id" {
 }
 
 variable "public_subnets" {
-  type = map(object({
-    cidr   = string
-    az_key = string
-  }))
+  type = map(string)
 }
 
 variable "private_subnets" {
-  type = map(object({
-    cidr   = string
-    az_key = string
-  }))
+  type = map(string)
+}
+
+variable "nat_per_az" {
+  type = bool
 }
