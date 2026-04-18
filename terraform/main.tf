@@ -17,15 +17,12 @@ module "networking" {
   nat_per_az = var.nat_per_az
 }
 
-# module "security" {
-#   source = "./modules/security"
+module "security" {
+  source = "./modules/security"
 
-#   project     = local.project
-#   environment = local.environment
-#   common_tags = local.common_tags
-
-#   vpc_id = module.vpc.vpc_id
-# }
+  name_prefix = local.name_prefix
+  vpc_id      = module.vpc.vpc_id
+}
 
 # module "compute" {
 #   source = "./modules/compute"
