@@ -1,15 +1,7 @@
-variable "project" {
+variable "name_prefix" {
   type = string
 }
 
-variable "environment" {
-  type = string
-}
-
-variable "common_tags" {
-  type = map(string)
-}
-
-variable "vpc_cidr" {
+variable "cidr_block" {
   type = string
 }

@@ -1,73 +1,70 @@
 module "vpc" {
   source = "./modules/vpc"
 
-  project     = local.project
-  environment = local.environment
-  common_tags = local.common_tags
-
-  vpc_cidr = "10.0.0.0/16"
+  name_prefix = local.name_prefix
+  cidr_block  = var.vpc_cidr
 }
 
-module "networking" {
-  source = "./modules/networking"
+# module "networking" {
+#   source = "./modules/networking"
 
-  project     = local.project
-  environment = local.environment
-  common_tags = local.common_tags
+#   project     = local.project
+#   environment = local.environment
+#   common_tags = local.common_tags
 
-  vpc_id = module.vpc.vpc_id
+#   vpc_id = module.vpc.vpc_id
 
-  public_subnets = {
-    public-subnet-1 = { cidr = "10.0.1.0/24", az_key = "az-a" },
-    public-subnet-2 = { cidr = "10.0.3.0/24", az_key = "az-b" }
-  }
-  private_subnets = {
-    private-subnet-1 = { cidr = "10.0.2.0/24", az_key = "az-a" },
-    private-subnet-2 = { cidr = "10.0.4.0/24", az_key = "az-b" }
-  }
-}
+#   public_subnets = {
+#     public-subnet-1 = { cidr = "10.0.1.0/24", az_key = "az-a" },
+#     public-subnet-2 = { cidr = "10.0.3.0/24", az_key = "az-b" }
+#   }
+#   private_subnets = {
+#     private-subnet-1 = { cidr = "10.0.2.0/24", az_key = "az-a" },
+#     private-subnet-2 = { cidr = "10.0.4.0/24", az_key = "az-b" }
+#   }
+# }
 
-module "security" {
-  source = "./modules/security"
+# module "security" {
+#   source = "./modules/security"
 
-  project     = local.project
-  environment = local.environment
-  common_tags = local.common_tags
+#   project     = local.project
+#   environment = local.environment
+#   common_tags = local.common_tags
 
-  vpc_id = module.vpc.vpc_id
-}
+#   vpc_id = module.vpc.vpc_id
+# }
 
-module "alb" {
-  source = "./modules/alb"
+# module "alb" {
+#   source = "./modules/alb"
 
-  project     = local.project
-  environment = local.environment
-  common_tags = local.common_tags
+#   project     = local.project
+#   environment = local.environment
+#   common_tags = local.common_tags
 
-  vpc_id            = module.vpc.vpc_id
-  public_subnet_ids = module.networking.public_subnet_ids
-  alb_sg_id         = module.security.alb_sg_id
-}
+#   vpc_id            = module.vpc.vpc_id
+#   public_subnet_ids = module.networking.public_subnet_ids
+#   alb_sg_id         = module.security.alb_sg_id
+# }
 
-module "compute" {
-  source = "./modules/compute"
+# module "compute" {
+#   source = "./modules/compute"
 
-  project     = local.project
-  environment = local.environment
-  common_tags = local.common_tags
+#   project     = local.project
+#   environment = local.environment
+#   common_tags = local.common_tags
 
-  private_subnet_ids = module.networking.private_subnet_ids
-  web_sg_id          = module.security.web_sg_id
-  target_group_arn   = module.alb.target_group_arn
-}
+#   private_subnet_ids = module.networking.private_subnet_ids
+#   web_sg_id          = module.security.web_sg_id
+#   target_group_arn   = module.alb.target_group_arn
+# }
 
-module "observability" {
-  source = "./modules/observability"
+# module "observability" {
+#   source = "./modules/observability"
 
-  project     = local.project
-  environment = local.environment
-  common_tags = local.common_tags
+#   project     = local.project
+#   environment = local.environment
+#   common_tags = local.common_tags
 
-  target_group_arn_suffix = module.alb.target_group_arn_suffix
-  alb_arn_suffix          = module.alb.alb_arn_suffix
-}
+#   target_group_arn_suffix = module.alb.target_group_arn_suffix
+#   alb_arn_suffix          = module.alb.alb_arn_suffix
+# }
