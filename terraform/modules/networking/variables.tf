@@ -17,3 +17,7 @@ variable "private_subnets" {
 variable "nat_per_az" {
   type = bool
 }
+
+variable "alb_security_group_ids" {
+  type = list(string)
+}

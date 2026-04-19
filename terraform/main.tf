@@ -15,6 +15,10 @@ module "networking" {
   private_subnets = var.private_subnets
 
   nat_per_az = var.nat_per_az
+
+  alb_security_group_ids = [
+    module.security.alb_security_group_id
+  ]
 }
 
 module "security" {
