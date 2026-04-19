@@ -17,13 +17,15 @@ private_subnets = {
   "ap-south-1b" = "10.2.4.0/24"
 }
 
+# Compute
+instance_type = "t3.small"
+
 # ASG (production-like behavior)
 asg_min     = 2
 asg_desired = 2
 asg_max     = 4
 
-scale_out_cpu_threshold = 60
-scale_in_cpu_threshold  = 40
+target_cpu_utilization = 65
 
 # networking (production simulation)
 nat_per_az = true

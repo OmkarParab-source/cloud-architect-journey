@@ -15,18 +15,15 @@ variable "private_subnets" {
   type = map(string)
 }
 
+# Compute
+variable "instance_type" { type = string }
+
 # ASG
 variable "asg_min" { type = number }
 variable "asg_desired" { type = number }
 variable "asg_max" { type = number }
 
-# Scaling (optional)
-variable "scale_out_cpu_threshold" {
-  type    = number
-  default = null
-}
-
-variable "scale_in_cpu_threshold" {
+variable "target_cpu_utilization" {
   type    = number
   default = null
 }

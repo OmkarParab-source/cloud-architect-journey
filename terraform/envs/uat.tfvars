@@ -17,13 +17,15 @@ private_subnets = {
   "ap-south-1b" = "10.1.4.0/24"
 }
 
+# Compute
+instance_type = "t3.micro"
+
 # ASG (behavior validation)
 asg_min     = 2
 asg_desired = 2
 asg_max     = 3
 
-scale_out_cpu_threshold = 65
-scale_in_cpu_threshold  = 35
+target_cpu_utilization = 70
 
 # networking (intentional single point of failure)
 nat_per_az = false

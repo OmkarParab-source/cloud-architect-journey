@@ -28,17 +28,26 @@ module "security" {
   vpc_id      = module.vpc.vpc_id
 }
 
-# module "compute" {
-#   source = "./modules/compute"
+module "compute" {
+  source = "./modules/compute"
 
-#   project     = local.project
-#   environment = local.environment
-#   common_tags = local.common_tags
+  name_prefix = local.name_prefix
 
-#   private_subnet_ids = module.networking.private_subnet_ids
-#   web_sg_id          = module.security.web_sg_id
-#   target_group_arn   = module.alb.target_group_arn
-# }
+  private_subnet_ids = module.networking.private_subnet_ids
+  target_group_arn   = module.networking.target_group_arn
+
+  ec2_security_group_id = module.security.ec2_security_group_id
+  instance_profile_name = module.security.instance_profile_name
+
+  ami_id        = data.aws_ami.amazon_linux_2023.id
+  instance_type = var.instance_type
+
+  asg_min     = var.asg_min
+  asg_desired = var.asg_desired
+  asg_max     = var.asg_max
+
+  target_cpu_utilization = var.target_cpu_utilization
+}
 
 # module "observability" {
 #   source = "./modules/observability"

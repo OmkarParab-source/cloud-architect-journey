@@ -15,13 +15,15 @@ private_subnets = {
   "ap-south-1a" = "10.0.2.0/24"
 }
 
+# Compute
+instance_type = "t3.micro"
+
 # ASG (lifecycle only, no scaling)
 asg_min     = 1
 asg_desired = 1
 asg_max     = 1
 
-scale_out_cpu_threshold = null
-scale_in_cpu_threshold  = null
+target_cpu_utilization = null
 
 # networking (cost optimized)
 nat_per_az = false

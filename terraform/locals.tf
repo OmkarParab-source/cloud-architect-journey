@@ -9,6 +9,6 @@ locals {
   }
 
   # derived behavior
-  scaling_enabled = var.scale_out_cpu_threshold != null
+  scaling_enabled = var.target_cpu_utilization != null
   multi_az        = length(var.private_subnets) > 1
 }
