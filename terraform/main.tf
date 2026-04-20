@@ -49,13 +49,20 @@ module "compute" {
   target_cpu_utilization = var.target_cpu_utilization
 }
 
-# module "observability" {
-#   source = "./modules/observability"
+module "observability" {
+  source = "./modules/observability"
 
-#   project     = local.project
-#   environment = local.environment
-#   common_tags = local.common_tags
+  name_prefix = local.name_prefix
+  environment = var.environment
+  region      = var.region
 
-#   target_group_arn_suffix = module.alb.target_group_arn_suffix
-#   alb_arn_suffix          = module.alb.alb_arn_suffix
-# }
+  enable_observability = var.enable_observability
+
+  alb_arn_suffix          = module.networking.alb_arn_suffix
+  target_group_arn_suffix = module.networking.target_group_arn_suffix
+
+  asg_name = module.compute.asg_name
+
+  alb_latency_threshold_seconds = var.alb_latency_threshold_seconds
+  cpu_high_threshold            = var.cpu_high_threshold
+}

@@ -34,16 +34,16 @@ variable "nat_per_az" {
 }
 
 # Observability
-variable "log_retention_days" {
-  type = number
+variable "enable_observability" {
+  type = bool
 }
 
-variable "cpu_warning_threshold" {
+variable "alb_latency_threshold_seconds" {
   type    = number
   default = null
 }
 
-variable "cpu_critical_threshold" {
+variable "cpu_high_threshold" {
   type    = number
   default = null
 }

@@ -29,6 +29,7 @@ target_cpu_utilization = null
 nat_per_az = false
 
 # observability (informational)
-log_retention_days     = 3
-cpu_warning_threshold  = 85
-cpu_critical_threshold = 95
+enable_observability = true
+
+alb_latency_threshold_seconds = 2
+cpu_high_threshold            = 90

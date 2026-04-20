@@ -31,6 +31,7 @@ target_cpu_utilization = 65
 nat_per_az = true
 
 # observability (near-production)
-log_retention_days     = 14
-cpu_warning_threshold  = 70
-cpu_critical_threshold = 85
+enable_observability = true
+
+alb_latency_threshold_seconds = 0.8
+cpu_high_threshold            = 80
